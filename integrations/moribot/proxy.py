@@ -29,6 +29,14 @@ _HOP_BY_HOP = {
 }
 
 
+def _json_response(payload: dict[str, Any], status_code: int) -> Response:
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False),
+        status_code=status_code,
+        media_type="application/json",
+    )
+
+
 def create_memory_proxy_router(
     *,
     manager: MemoryServiceManager,
@@ -43,6 +51,16 @@ def create_memory_proxy_router(
         path: str,
         user: Any = Depends(get_current_user),
     ) -> Response:
+        if not manager.settings.enabled:
+            return _json_response(
+                {
+                    "status": "error",
+                    "message": "MoriMemory is disabled in MoriBot settings.",
+                    "data": {"code": "memory_disabled"},
+                },
+                503,
+            )
+
         body = await request.body()
         headers = {
             "X-Mori-User-Id": getattr(user, "username", None) or str(getattr(user, "id", "local")),
@@ -67,17 +85,13 @@ def create_memory_proxy_router(
                 content=body,
             )
         except (httpx.HTTPError, OSError) as exc:
-            return Response(
-                content=json.dumps(
-                    {
-                        "status": "error",
-                        "message": f"MoriMemory service is unavailable: {exc}",
-                        "data": {"code": "memory_unavailable"},
-                    },
-                    ensure_ascii=False,
-                ),
-                status_code=503,
-                media_type="application/json",
+            return _json_response(
+                {
+                    "status": "error",
+                    "message": f"MoriMemory service is unavailable: {exc}",
+                    "data": {"code": "memory_unavailable"},
+                },
+                503,
             )
 
         response_headers = {

@@ -800,6 +800,7 @@ class MemoryEngine:
         *,
         conversation_id: str | None = None,
         character_id: str | None = None,
+        character_name: str | None = None,
         async_mode: bool = True,
     ) -> IngestResult:
         effective = principal.model_copy(
@@ -808,6 +809,7 @@ class MemoryEngine:
                 "character_id": character_id or principal.character_id,
             }
         )
+        character_label = (character_name or "").strip()
         async with self.database.session() as session:
             repository = self.repository(session)
             user_space = await repository.ensure_space(
@@ -816,7 +818,9 @@ class MemoryEngine:
             spaces = {"user": user_space.id}
             if effective.character_id:
                 character_space = await repository.ensure_space(
-                    MemorySpaceKind.CHARACTER, character_id=effective.character_id
+                    MemorySpaceKind.CHARACTER,
+                    character_id=effective.character_id,
+                    name=f"角色 · {character_label}" if character_label else "",
                 )
                 spaces["character"] = character_space.id
             if effective.conversation_id:
@@ -838,6 +842,9 @@ class MemoryEngine:
                     {
                         "messages": [message.model_dump(mode="json") for message in messages],
                         "principal": effective.model_dump(),
+                        "conversation_id": effective.conversation_id,
+                        "character_id": effective.character_id,
+                        "character_name": character_label or None,
                     },
                     priority=10,
                     dedupe_key=dedupe_key,
@@ -884,7 +891,14 @@ class MemoryEngine:
             ConversationMessage.model_validate(item) for item in payload.get("messages", [])
         ]
         principal = Principal.model_validate(payload.get("principal", {}))
-        result = await self.ingest_conversation(messages, principal, async_mode=False)
+        result = await self.ingest_conversation(
+            messages,
+            principal,
+            conversation_id=str(payload.get("conversation_id") or "") or None,
+            character_id=str(payload.get("character_id") or "") or None,
+            character_name=str(payload.get("character_name") or "") or None,
+            async_mode=False,
+        )
         return {
             "candidates": result.candidates,
             "created": result.created,

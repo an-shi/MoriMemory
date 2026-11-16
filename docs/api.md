@@ -150,6 +150,7 @@ Content-Type: application/json
 {
   "conversation_id": "conv-123",
   "character_id": "mori",
+  "character_name": "Mori",
   "async_mode": true,
   "messages": [
     { "id": "m1", "role": "user", "content": "我喜欢喝绿茶。" },
@@ -160,7 +161,8 @@ Content-Type: application/json
 
 - `async_mode=true`：写入 `extract_conversation` 任务并立即返回 `task_id`。
 - `async_mode=false`：同步提取，返回候选数、创建数、强化数、记忆 ID。
-- 用户/角色/会话空间会自动创建。
+- 用户/角色/会话空间会自动创建；`character_name` 仅用于给角色空间命名。
+- 带 `character_id` 时，用户持久事实会写入该角色空间，不会进入共享用户空间。
 - 默认只提取 user 消息；`extraction.include_assistant=true` 才提取助手消息（来源标记为 `ai_inference`）。
 
 ## 6. 检索与上下文

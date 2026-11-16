@@ -149,6 +149,7 @@ await memory_manager.request(
         {
             "conversation_id": conversation_id,
             "character_id": str(character.id),
+            "character_name": character.name,
             "async_mode": True,
             "messages": [
                 {"id": msg.id, "role": "user", "content": msg.content},
@@ -267,8 +268,8 @@ pnpm dev
 - `security.enforce_origin` 默认只允许 `server.cors_origins` 中的浏览器来源。
 - 生产环境不要将 6190 端口暴露到局域网；如必须暴露，请放在带 TLS 和认证的反向代理之后。
 - 角色私有记忆由后端 `SpaceAccessService` 强制隔离；`recall` 模式下另一个角色无法读取该空间。
-- 用户级记忆默认对同一用户的所有角色可见；如需逐角色授权，将
-  `security.share_user_memory_by_default` 设为 `false`，再使用 `/grants` 授权。
+- 用户级空间不会隐式共享给角色；如需跨角色共享，必须通过 `/grants` 显式授权。
+- 对话记忆只对同一角色开放；不同角色即使属于同一用户也无法互相读取。
 
 ## 5. 故障排查
 
@@ -277,5 +278,5 @@ pnpm dev
 | MoriBot 启动后 `/api/v1/memory/health` 503 | 查看 `data/memory/memory-service.out.log`；确认 `uv` 可用、`memory.home` 正确 |
 | 页面 401 | 浏览器 JWT 是否有效；代理是否正确注入服务令牌 |
 | 图谱或表格为空 | 确认用户 ID 与写入记忆时的 `X-Mori-User-Id` 一致；检查筛选条件 |
-| 角色看不到用户记忆 | 设置 `share_user_memory_by_default=true`，或调用 `/api/v1/grants` 授权 |
+| 角色看不到用户记忆 | 这是严格隔离的预期行为；需要共享时调用 `/api/v1/grants` 授权 |
 | 端口被占用 | 修改 `memory.port`，或先停止旧的 Memory Service |

@@ -5,8 +5,9 @@ Two access modes exist:
 * ``manage`` — the MoriBot management UI. The local administrator may browse
   their user spaces, their conversations and character spaces.
 * ``recall`` — reply-time retrieval. A character only sees its own private
-  space, the active conversation, and user memories explicitly shared with
-  that character. Private character spaces never leak to another character.
+  space, its own conversations, and spaces explicitly granted to that
+  character. User-level spaces are never shared implicitly, so two characters
+  can never read each other's memories.
 """
 
 from __future__ import annotations
@@ -113,14 +114,16 @@ class SpaceAccessService:
         if space.kind == MemorySpaceKind.USER:
             if space.user_id != principal.user_id:
                 return False
-            if principal.character_id is None:
-                return True
-            return bool(self.config.get("security.share_user_memory_by_default", False))
+            # A character conversation must not read the shared user space:
+            # doing so would leak facts learned by one character into another.
+            # Explicit grants are resolved separately in ``resolve``.
+            return principal.character_id is None
         if space.kind == MemorySpaceKind.CONVERSATION:
-            return (
-                bool(principal.conversation_id)
-                and space.conversation_id == principal.conversation_id
-            ) or (bool(space.user_id) and space.user_id == principal.user_id)
+            if principal.conversation_id and space.conversation_id == principal.conversation_id:
+                return True
+            # The same character may recall events from its own past
+            # conversations, but never from another character's conversations.
+            return bool(principal.character_id) and space.character_id == principal.character_id
         if space.kind == MemorySpaceKind.CHARACTER:
             return bool(principal.character_id) and space.character_id == principal.character_id
         return False

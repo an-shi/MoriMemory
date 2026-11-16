@@ -498,10 +498,16 @@ class ExtractionService:
             max_candidates=max_candidates,
         )
         for candidate in candidates:
-            if candidate.scope == "auto" and principal.character_id is None:
-                candidate.scope = (
-                    "conversation" if candidate.memory_type == MemoryType.EPISODIC else "user"
-                )
+            if principal.character_id is None:
+                if candidate.scope == "auto":
+                    candidate.scope = (
+                        "conversation" if candidate.memory_type == MemoryType.EPISODIC else "user"
+                    )
+            elif candidate.scope in {"auto", "user"}:
+                # Every durable fact learned while talking to a character is
+                # stored in that character's private space. Keeping it in the
+                # shared user space would let another character recall it.
+                candidate.scope = "character"
         return candidates
 
 

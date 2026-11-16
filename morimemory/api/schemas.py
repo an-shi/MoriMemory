@@ -75,6 +75,7 @@ class ContextRequest(SearchRequest):
 class IngestRequest(BaseModel):
     conversation_id: str | None = None
     character_id: str | None = None
+    character_name: str | None = Field(default=None, max_length=64)
     messages: list[ConversationMessage] = Field(min_length=1, max_length=200)
     async_mode: bool = True
 

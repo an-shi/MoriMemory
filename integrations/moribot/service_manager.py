@@ -182,6 +182,7 @@ class MemoryServiceManager:
             self._remove_lock()
             return False
 
+        self._stopping = False
         command = self._build_command()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         log_path = self.data_dir / "memory-service.out.log"
@@ -365,7 +366,22 @@ class MemoryServiceManager:
             if not self._lock_file.is_file():
                 return None
             data = json.loads(self._lock_file.read_text(encoding="utf-8"))
-            return data if isinstance(data, dict) else None
+            if not isinstance(data, dict):
+                return None
+            locked_dir = str(data.get("data_dir") or "").strip()
+            if locked_dir:
+                try:
+                    if Path(locked_dir).resolve() != self.data_dir.resolve():
+                        return None
+                except OSError:
+                    return None
+            try:
+                locked_port = int(data.get("port", self.settings.port))
+            except (TypeError, ValueError):
+                locked_port = self.settings.port
+            if locked_port != self.settings.port:
+                return None
+            return data
         except (OSError, ValueError):
             return None
 

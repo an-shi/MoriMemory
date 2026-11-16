@@ -42,6 +42,10 @@ def test_ingest_extracts_atomic_claims_with_evidence(client):
     assert by_category["fact"]["content"] == "我住在上海"
     for item in listing["items"]:
         assert item["source_kind"] == "user_explicit"
+        # Character conversations keep durable facts inside the character
+        # space; nothing is written to the shared user space.
+        assert item["space"]["kind"] == "character"
+        assert item["space"]["character_id"] == "char1"
 
     detail = client.get(
         f"/api/v1/memories/{by_category['preference']['id']}",
@@ -187,10 +191,7 @@ def test_retrieval_is_space_scoped_and_supports_character_isolation(client):
     )
 
 
-def test_user_memory_grant_can_be_revoked(client, app_context):
-    _app, config, _paths = app_context
-    config.set("security.share_user_memory_by_default", False)
-    config.save()
+def test_user_memory_grant_can_be_revoked(client):
     admin = auth_headers(role="admin")
     char2 = auth_headers(character_id="char2", role="service")
 
@@ -235,6 +236,118 @@ def test_user_memory_grant_can_be_revoked(client, app_context):
         json={"query": "杭州", "mode": "recall"},
     ).json()["data"]["items"]
     assert after_revoke == []
+
+
+def test_ingested_character_memories_are_private_per_character(client):
+    char1 = auth_headers(
+        character_id="char1",
+        conversation_id="conv-a",
+        role="service",
+    )
+    char2 = auth_headers(
+        character_id="char2",
+        conversation_id="conv-b",
+        role="service",
+    )
+    response = client.post(
+        "/api/v1/conversations/ingest",
+        headers=char1,
+        json={
+            "character_name": "Mori",
+            "messages": [
+                {
+                    "id": "private-1",
+                    "role": "user",
+                    "content": "我叫小明，我喜欢喝绿茶，我住在上海。",
+                }
+            ],
+            "async_mode": False,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["created"] == 3
+
+    listing = client.get(
+        "/api/v1/memories",
+        headers=auth_headers(role="admin"),
+    ).json()["data"]
+    assert listing["total"] == 3
+    assert {item["space"]["character_id"] for item in listing["items"]} == {"char1"}
+    assert all(item["space"]["kind"] == "character" for item in listing["items"])
+
+    char1_hits = client.post(
+        "/api/v1/context",
+        headers=char1,
+        json={"query": "绿茶", "mode": "recall"},
+    ).json()["data"]
+    assert "绿茶" in char1_hits["context"]
+
+    char2_hits = client.post(
+        "/api/v1/context",
+        headers=char2,
+        json={"query": "绿茶", "mode": "recall"},
+    ).json()["data"]
+    assert char2_hits["context"] == ""
+    assert char2_hits["items"] == []
+
+    spaces = client.get(
+        "/api/v1/spaces?kind=user",
+        headers=auth_headers(role="admin"),
+    ).json()["data"]
+    user_space = next(
+        space
+        for space in spaces["items"]
+        if space["kind"] == "user" and space["user_id"] == "u1"
+    )
+    assert user_space["memory_count"] == 0
+
+
+def test_conversation_memories_stay_with_one_character(client):
+    char1_a = auth_headers(
+        character_id="char1",
+        conversation_id="conv-a",
+        role="service",
+    )
+    char1_b = auth_headers(
+        character_id="char1",
+        conversation_id="conv-b",
+        role="service",
+    )
+    char2_b = auth_headers(
+        character_id="char2",
+        conversation_id="conv-b",
+        role="service",
+    )
+    response = client.post(
+        "/api/v1/conversations/ingest",
+        headers=char1_a,
+        json={
+            "messages": [
+                {
+                    "id": "event-1",
+                    "role": "user",
+                    "content": "今天去了西湖，湖边的荷花开得很好。",
+                }
+            ],
+            "async_mode": False,
+        },
+    )
+    assert response.status_code == 200, response.text
+
+    same_character = client.post(
+        "/api/v1/context",
+        headers=char1_b,
+        json={"query": "西湖", "mode": "recall"},
+    ).json()["data"]
+    assert "西湖" in same_character["context"]
+
+    other_character = client.post(
+        "/api/v1/context",
+        headers=char2_b,
+        json={"query": "西湖", "mode": "recall"},
+    ).json()["data"]
+    assert other_character["context"] == ""
+    assert other_character["items"] == []
 
 
 def test_list_focus_id_returns_page_containing_memory(client):

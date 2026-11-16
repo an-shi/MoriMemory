@@ -392,7 +392,6 @@ export interface RuntimeConfig {
   security: {
     default_user_id: string
     allow_character_management: boolean
-    share_user_memory_by_default: boolean
   }
   embedding: EmbeddingConfig
   extraction: {

@@ -36,9 +36,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "default_user_id": "local",
         "allow_character_management": True,
         "enforce_origin": True,
-        # A personal assistant usually wants the user's durable facts available
-        # to every character. Disable this to require explicit grants instead.
-        "share_user_memory_by_default": True,
     },
     "storage": {
         "database": "morimemory.db",
@@ -298,9 +295,6 @@ class ConfigManager:
                     "default_user_id": self.get("security.default_user_id", "local"),
                     "allow_character_management": bool(
                         self.get("security.allow_character_management", True)
-                    ),
-                    "share_user_memory_by_default": bool(
-                        self.get("security.share_user_memory_by_default", True)
                     ),
                 },
                 "embedding": {

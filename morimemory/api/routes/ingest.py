@@ -23,6 +23,7 @@ async def _ingest(
         principal,
         conversation_id=payload.conversation_id,
         character_id=payload.character_id,
+        character_name=payload.character_name,
         async_mode=payload.async_mode,
     )
     return ok(
