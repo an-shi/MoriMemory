@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+data/
+dist/
+build/
+*.egg-info/
+.env
+frontend/node_modules/
+frontend/dist/
+frontend/dev-dist/
+frontend/.vite/
+coverage.xml
+.coverage
+htmlcov/

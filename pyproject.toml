@@ -1,0 +1,52 @@
+[project]
+name = "morimemory"
+version = "0.1.0"
+description = "A local-first memory engine for MoriBot with hybrid retrieval and lifecycle management"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.15"
+authors = [{ name = "an-shi" }]
+keywords = ["AI", "memory", "MoriBot", "FastAPI", "SQLite", "FTS5"]
+dependencies = [
+  "aiosqlite>=0.21.0",
+  "cryptography>=44.0.3",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.0",
+  "loguru>=0.7.3",
+  "python-dotenv>=1.0.1",
+  "python-multipart>=0.0.20",
+  "sqlalchemy[asyncio]>=2.0.36",
+  "uvicorn[standard]>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.25.0",
+  "ruff>=0.9.0",
+]
+
+[project.scripts]
+morimemory = "morimemory.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["morimemory"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["data", "frontend", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "C4", "Q"]
+ignore = ["E501", "ASYNC230", "B008"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
